@@ -42,6 +42,21 @@ public class KVServer implements KeyValueInterface {
     @Override
     public void put(String key, String value) throws KVException {
         // implement me
+    	if (key.length() > MAX_KEY_SIZE) {
+    		throw new KVException(ERROR_OVERSIZED_KEY);
+    	}
+    	if (value.length() > MAX_VAL_SIZE) {
+    		throw new KVException(ERROR_OVERSIZED_VALUE);
+    	}
+    	Lock lock = dataCache.getLock(key);
+    	try {
+    		lock.lock();
+    		dataCache.put(key, value);
+        	dataStore.put(key, value);
+    	} finally {
+    		lock.unlock();
+    	}
+    	
     }
 
     /**
@@ -55,7 +70,28 @@ public class KVServer implements KeyValueInterface {
     @Override
     public String get(String key) throws KVException {
         // implement me
-        return null;
+    	if (key.length() > MAX_KEY_SIZE) {
+    		throw new KVException(ERROR_OVERSIZED_KEY);
+    	}
+
+    	String value = null;
+    	Lock lock = dataCache.getLock(key);
+    	try {
+    		lock.lock();
+    		value = dataCache.get(key);
+    		if (value == null) {
+    			value = dataStore.get(key);
+    			if (value != null) {
+    				dataCache.put(key, value);
+    			} else {
+    				throw new KVException("ERROR_NO_SUCH_KEY");
+    			}
+    		}
+        	
+    	} finally {
+    		lock.unlock();
+    	}
+        return value;
     }
 
     /**
@@ -67,6 +103,18 @@ public class KVServer implements KeyValueInterface {
     @Override
     public void del(String key) throws KVException {
         // implement me
+    	if (key.length() > MAX_KEY_SIZE) {
+    		throw new KVException(ERROR_OVERSIZED_KEY);
+    	}
+
+    	Lock lock = dataCache.getLock(key);
+    	try {
+    		lock.lock();
+    		dataCache.del(key);
+    		dataStore.del(key);
+    	} finally {
+    		lock.unlock();
+    	}
     }
 
     /**
@@ -79,7 +127,12 @@ public class KVServer implements KeyValueInterface {
      */
     public boolean hasKey(String key) {
         // implement me
-        return false;
+    	try {
+    		dataStore.get(key);
+    	} catch (Exception e) {
+    		return false;
+    	}
+        return true;
     }
 
     /** This method is purely for convenience and will not be tested. */
