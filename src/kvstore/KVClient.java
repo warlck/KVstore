@@ -41,7 +41,15 @@ public class KVClient implements KeyValueInterface {
      */
     public Socket connectHost() throws KVException {
         // implement me
-        return null;
+    	Socket sock = null;
+    	try {
+			sock = new Socket(server, port);
+		} catch (UnknownHostException e) {
+			throw new KVException(ERROR_COULD_NOT_CONNECT);
+		} catch (IOException e) {
+			throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
+		} 
+        return sock;
     }
 
     /**
@@ -52,6 +60,11 @@ public class KVClient implements KeyValueInterface {
      */
     public void closeHost(Socket sock) {
         // implement me
+    	try {
+			sock.close();
+		} catch (Exception e) {
+			//e.printStackTrace();
+		}
     }
 
     /**
@@ -63,6 +76,24 @@ public class KVClient implements KeyValueInterface {
     @Override
     public void put(String key, String value) throws KVException {
         // implement me
+    	if (key == null || key.length() == 0) throw new KVException(ERROR_INVALID_KEY);
+    	if (value == null || value.length() == 0) throw new KVException(ERROR_INVALID_VALUE);
+    	KVMessage putReq = new KVMessage(PUT_REQ);
+    	putReq.setKey(key);
+    	putReq.setValue(value);
+    	Socket sock = null;
+    	try {
+    		sock = connectHost();
+    		putReq.sendMessage(sock);
+    		KVMessage getRsp = new KVMessage(sock);
+        	if (!getRsp.getMessage().equals(KVConstants.SUCCESS))
+        		throw new KVException(getRsp.getMessage());
+    	} catch (KVException e) {
+    		throw e;
+    	} finally {
+        	if (sock != null)
+        		closeHost(sock);
+        }
     }
 
     /**
@@ -74,8 +105,26 @@ public class KVClient implements KeyValueInterface {
      */
     @Override
     public String get(String key) throws KVException {
-        // implement me
-        return null;
+    	if (key == null || key.length() == 0) throw new KVException(ERROR_INVALID_KEY);
+    	KVMessage getReq = new KVMessage(GET_REQ);
+    	getReq.setKey(key);
+    	KVMessage getRsp = null;
+    	Socket sock = null;
+    	try {
+    		sock = connectHost();
+    		getReq.sendMessage(sock);
+    		getRsp =new KVMessage(sock);
+    		if (getRsp.getKey() == null || getRsp.getValue() == null)
+        		throw new KVException(getRsp.getMessage());
+    	} catch (KVException e) {
+    		throw e;
+    	} finally {
+        	if (sock != null)
+        		closeHost(sock);
+        }
+
+    	return getRsp.getValue();
+
     }
 
     /**
@@ -87,6 +136,22 @@ public class KVClient implements KeyValueInterface {
     @Override
     public void del(String key) throws KVException {
         // implement me
+    	if (key == null || key.length() == 0) throw new KVException(ERROR_INVALID_KEY);
+    	KVMessage putReq = new KVMessage(DEL_REQ);
+    	putReq.setKey(key);
+    	Socket sock = null;
+    	try {
+    		sock = connectHost();
+    		putReq.sendMessage(sock);
+    		KVMessage getRsp = new KVMessage(sock);
+        	if (!getRsp.getMessage().equals(KVConstants.SUCCESS))
+        	throw new KVException(getRsp.getMessage());
+    	} catch (KVException e) {
+    		throw e;
+    	} finally {
+        	if (sock != null)
+        		closeHost(sock);
+        }
     }
 
 
