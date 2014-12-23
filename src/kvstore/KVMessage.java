@@ -4,6 +4,7 @@ import static kvstore.KVConstants.*;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
 import javax.xml.bind.JAXBContext;
@@ -27,6 +28,7 @@ import org.xml.sax.SAXException;
  * This is the object that is used to generate the XML based messages
  * for communication between clients and servers.
  */
+@SuppressWarnings("unused")
 public class KVMessage implements Serializable {
 
     private String msgType;
@@ -80,6 +82,26 @@ public class KVMessage implements Serializable {
      */
     public KVMessage(Socket sock, int timeout) throws KVException {
         // implement me
+    	try {
+        	sock.setSoTimeout(timeout);
+        }
+        catch (SocketException ex) {
+        	throw new KVException(KVConstants.ERROR_SOCKET_TIMEOUT);
+        }
+    	KVMessageType sockm = null;
+    	try {
+    		sockm = unmarshal(sock.getInputStream());
+    	} catch (JAXBException e) {
+    		throw new KVException(KVConstants.ERROR_PARSER);
+    	} catch (IOException e) {
+    		throw new KVException(KVConstants.ERROR_COULD_NOT_RECEIVE_DATA);
+		} 
+    	if (sockm != null) {
+    		msgType = sockm.getType();
+    		key =  sockm.getKey();
+    		value = sockm.getValue();
+    		message = sockm.getMessage();
+    	}
     }
 
     /**
@@ -89,6 +111,10 @@ public class KVMessage implements Serializable {
      */
     public KVMessage(KVMessage kvm) {
         // implement me
+        msgType = kvm.getMsgType();
+        key = kvm.getKey();
+        value = kvm.getValue();
+        message = kvm.getMessage();
     }
 
     
@@ -103,6 +129,10 @@ public class KVMessage implements Serializable {
         ObjectFactory factory = new ObjectFactory();
         KVMessageType xmlStore = factory.createKVMessageType();
         //implement me
+        xmlStore.setType(msgType);
+        xmlStore.setKey(key);
+        xmlStore.setValue(value);
+        xmlStore.setMessage(message);
         return factory.createKVMessage(xmlStore);
     }
 
@@ -135,7 +165,8 @@ public class KVMessage implements Serializable {
      * @return KVMessageType from XML
      * @throws JAXBException
      */
-    private KVMessageType unmarshal(InputStream is) throws JAXBException {
+    @SuppressWarnings("unchecked")
+	private KVMessageType unmarshal(InputStream is) throws JAXBException {
         JAXBContext jc = JAXBContext.newInstance(ObjectFactory.class);
         Unmarshaller unmarshaller = jc.createUnmarshaller();
         return ((JAXBElement<KVMessageType>)unmarshaller.unmarshal(new NoCloseInputStream(is))).getValue();
@@ -169,6 +200,18 @@ public class KVMessage implements Serializable {
      */
     public void sendMessage(Socket sock) throws KVException {
         // implement me
+    	PrintWriter p = null;
+        try {
+        	p = new PrintWriter(sock.getOutputStream());
+        	p.write(this.toXML());
+        	p.flush();
+        	
+        	sock.shutdownOutput();
+        }
+        catch (IOException ex) {
+        	throw new KVException(KVConstants.ERROR_COULD_NOT_SEND_DATA);
+        }
+    	
     }
 
     public String getKey() {
