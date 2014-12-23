@@ -58,9 +58,6 @@ public class KVCache implements KeyValueInterface {
     @Override
     public String get(String key) {
         // implement me
-    	Lock setlock = getLock(key);
-    	setlock.lock();
-    	
     	
     	int SetId = Math.abs(key.hashCode()) % numSets;
     	for (KVCacheEntry e : Cache[SetId].getCacheEntry()) {
@@ -70,7 +67,6 @@ public class KVCache implements KeyValueInterface {
     		}
     	}
     	
-    	setlock.unlock();
         return null;
     }
 
@@ -93,10 +89,7 @@ public class KVCache implements KeyValueInterface {
     @Override
     public void put(String key, String value) {
         // implement me
-    	Lock setlock = getLock(key);
-    	setlock.lock();
-    	
-    	
+    	    	
     	int SetId = Math.abs(key.hashCode()) % numSets;
     	List<KVCacheEntry> curSet = Cache[SetId].getCacheEntry();
     	KVCacheEntry thisEntry = null;  //to find if the key-value pair is already a cacheEntry in Set
@@ -135,7 +128,6 @@ public class KVCache implements KeyValueInterface {
     		}
     	}
     	
-    	setlock.unlock();
     }
 
     /**
@@ -148,8 +140,6 @@ public class KVCache implements KeyValueInterface {
     @Override
     public void del(String key) {
         // implement me
-    	Lock setlock = getLock(key);
-    	setlock.lock();
     	
     	
     	int SetId = Math.abs(key.hashCode()) % numSets;
@@ -162,7 +152,6 @@ public class KVCache implements KeyValueInterface {
     		curSet.remove(thisEntry);
     	}
     	
-    	setlock.unlock();
     }
 
     /**

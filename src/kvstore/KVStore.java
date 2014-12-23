@@ -2,17 +2,22 @@ package kvstore;
 
 import static kvstore.KVConstants.ERROR_NO_SUCH_KEY;
 
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
+
 import kvstore.xml.KVPairType;
 import kvstore.xml.KVStoreType;
 import kvstore.xml.ObjectFactory;
@@ -101,7 +106,8 @@ public class KVStore implements KeyValueInterface {
         marshaller.marshal(getXMLRoot(), os);
     }
     
-    private KVStoreType unmarshal(File f) throws JAXBException {
+    @SuppressWarnings("unchecked")
+	private KVStoreType unmarshal(File f) throws JAXBException {
         JAXBContext context = JAXBContext.newInstance(ObjectFactory.class);
         Unmarshaller unmarshaller = context.createUnmarshaller();
         KVStoreType xmlStore = ((JAXBElement<KVStoreType>) unmarshaller.unmarshal(f)).getValue();
@@ -135,6 +141,27 @@ public class KVStore implements KeyValueInterface {
      */
     public void dumpToFile(String fileName) {
         // implement me
+    	BufferedWriter writer = null;
+    	try
+    	{
+    	    writer = new BufferedWriter(new FileWriter(fileName));
+    	    writer.write(this.toString());
+
+    	}
+    	catch ( IOException e)
+    	{
+    	}
+    	finally
+    	{
+    	    try
+    	    {
+    	        if ( writer != null)
+    	        writer.close( );
+    	    }
+    	    catch ( IOException e)
+    	    {
+    	    }
+    	}
     }
 
     /**
@@ -147,7 +174,20 @@ public class KVStore implements KeyValueInterface {
      */
     public void restoreFromFile(String fileName) {
         resetStore();
+     // implement me
+        
+        File f = new File(fileName);
+        KVStoreType storefile = null;
+        try {
+        	storefile = unmarshal(f);
+        } catch (JAXBException e) {
+        	e.printStackTrace();
+        } 
+    	for (KVPairType e : storefile.getKVPair()) {
+        	store.put(e.getKey(), e.getValue());
+        }
+        
 
-        // implement me
+        
     }
 }
