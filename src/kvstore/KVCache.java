@@ -40,10 +40,15 @@ public class KVCache implements KeyValueInterface {
     //@SuppressWarnings("unchecked")
     public KVCache(int numSets, int maxElemsPerSet) {
         // implement me
-    	Cache = new KVSetType[numSets];
-    	SetLock = new Lock[numSets];
     	this.numSets = numSets;
     	this.maxElemsPerSet = maxElemsPerSet;
+    	Cache = new KVSetType[numSets];
+    	SetLock = new Lock[numSets];
+    	for (int i = 0; i < numSets; i++) {
+    		Cache[i] = new KVSetType();
+    		SetLock[i] = new ReentrantLock();
+    	}
+    	
     }
 
     /**
