@@ -1,10 +1,17 @@
 package kvstore;
 
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.concurrent.locks.ReentrantLock;
+
 
 public class ThreadPool {
 
     /* Array of threads in the threadpool */
     public Thread threads[];
+    public Queue<Runnable> tasks;
+    public ReentrantLock addLock;
+    public ReentrantLock getLock;
 
 
     /**
@@ -16,6 +23,13 @@ public class ThreadPool {
         threads = new Thread[size];
 
         // implement me
+        addLock = new ReentrantLock();
+        getLock = new ReentrantLock();
+        tasks = new LinkedList<Runnable>();
+        for (int i = 0; i < size; i++) {
+        	threads[i] = new WorkerThread(this);
+        	threads[i].start();
+        }
     }
 
     /**
@@ -29,6 +43,9 @@ public class ThreadPool {
      */
     public void addJob(Runnable r) throws InterruptedException {
         // implement me
+    	addLock.lock();
+    	tasks.add(r);
+    	addLock.unlock();
     }
 
     /**
@@ -39,7 +56,10 @@ public class ThreadPool {
      */
     public Runnable getJob() throws InterruptedException {
         // implement me
-        return null;
+    	getLock.lock();
+    	Runnable toDo = tasks.isEmpty() ? null : tasks.poll();
+        getLock.unlock();
+        return toDo;
     }
 
     /**
@@ -64,6 +84,20 @@ public class ThreadPool {
         @Override
         public void run() {
             // implement me
+        	while (true) {
+        		
+				try {
+					Runnable task = threadPool.getJob();
+					if (task != null) {
+	        			task.run();
+	        		}
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					return;
+				}
+        		
+        	}
         }
     }
 }

@@ -108,7 +108,7 @@ public class KVCache implements KeyValueInterface {
     			KVCacheEntry newEntry = new KVCacheEntry();
     			newEntry.setKey(key);
     			newEntry.setValue(value);
-    			newEntry.setIsReferenced("TURE");
+    			newEntry.setIsReferenced("FALSE");
     			curSet.add(newEntry);
     		}
     	} else { // Set is full;
@@ -119,16 +119,19 @@ public class KVCache implements KeyValueInterface {
     			KVCacheEntry newEntry = new KVCacheEntry();
     			newEntry.setKey(key);
     			newEntry.setValue(value);
-    			newEntry.setIsReferenced("TURE");
-    			for (KVCacheEntry e : curSet) {
-    				if (e.getIsReferenced().equals("TURE")) {
-    					e.setIsReferenced("FALSE");
-    				} else {
-    					curSet.remove(e);
-    					break;
-    				}
+    			newEntry.setIsReferenced("FALSE");
+    			while (true) {
+    				for (KVCacheEntry e : curSet) {
+        				if (e.getIsReferenced().equals("TRUE")) {
+        					e.setIsReferenced("FALSE");
+        				} else {
+        					curSet.remove(e);
+        					curSet.add(newEntry);
+        					return;
+        				}
+        			}
+
     			}
-    			curSet.add(newEntry);
     		}
     	}
     	
