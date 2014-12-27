@@ -2,6 +2,7 @@ package kvstore;
 
 import static kvstore.KVConstants.*;
 
+import java.io.IOException;
 import java.net.Socket;
 /**
  * Implements NetworkHandler to handle 2PC operation requests from the Master/
@@ -15,6 +16,9 @@ public class TPCMasterHandler implements NetworkHandler {
     public ThreadPool threadpool;
 
     // implement me
+    private class masterHandler implements Runnable {
+    	public void run(){}
+    }
 
     /**
      * Constructs a TPCMasterHandler with one connection in its ThreadPool
@@ -58,6 +62,28 @@ public class TPCMasterHandler implements NetworkHandler {
     public void registerWithMaster(String masterHostname, SocketServer server)
             throws KVException {
         // implement me
+    	String SlaveInfo = slaveID + "@" + server.getHostname() + ":" + server.getPort();
+    	KVMessage Reg = new KVMessage(SlaveInfo);
+    	Socket sock = null;
+    	try {
+    		sock = new Socket(masterHostname, 9090);
+    		Reg.sendMessage(sock);
+    		KVMessage RegRsp = new KVMessage(sock);
+    		if (!RegRsp.getMsgType().equals(RESP) || 
+    				!RegRsp.getMessage().equals("Successfully registered " + SlaveInfo)) {
+    			throw new KVException(ERROR_INVALID_FORMAT);
+    		}
+    	} catch (IOException ex) {
+        	throw new KVException(ERROR_COULD_NOT_CONNECT);
+        } catch (Exception ex) {
+        	throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
+        }
+    	try {
+    		if (sock != null) {
+    			sock.close();
+    		}
+    	} catch (Exception e) {
+    	}
     }
 
     /**
@@ -70,4 +96,6 @@ public class TPCMasterHandler implements NetworkHandler {
     public void handle(Socket master) {
         // implement me
     }
+    
+
 }

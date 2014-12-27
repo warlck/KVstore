@@ -5,6 +5,7 @@ import static kvstore.KVConstants.*;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class TPCMaster {
 
@@ -12,6 +13,9 @@ public class TPCMaster {
     public KVCache masterCache;
 
     public static final int TIMEOUT = 3000;
+    
+    private HashMap<Long, TPCSlaveInfo> slaves;
+    private Lock MapLock;
 
     /**
      * Creates TPCMaster, expecting numSlaves slave servers to eventually register
@@ -23,6 +27,9 @@ public class TPCMaster {
         this.numSlaves = numSlaves;
         this.masterCache = cache;
         // implement me
+        
+        slaves = new HashMap<Long, TPCSlaveInfo>();
+        MapLock = new ReentrantLock();
     }
 
     /**
@@ -34,6 +41,11 @@ public class TPCMaster {
      */
     public void registerSlave(TPCSlaveInfo slave) {
         // implement me
+    	MapLock.lock();
+    	if (slaves.size() < numSlaves) {
+    		slaves.put(slave.slaveID, slave);
+    	}
+    	MapLock.unlock();
     }
 
     /**
@@ -84,7 +96,21 @@ public class TPCMaster {
      */
     public TPCSlaveInfo findFirstReplica(String key) {
         // implement me
-        return null;
+    	long keyHash = hashTo64bit(key);
+    	long FirstReplicaID = Long.MAX_VALUE;
+    	long minSlaveID = Long.MAX_VALUE;
+    	for (long slaveId : slaves.keySet()) {
+    		if (isLessThanEqualUnsigned(keyHash, slaveId) && isLessThanUnsigned(slaveId, FirstReplicaID)) {
+    			FirstReplicaID = slaveId;
+    		}
+    		if (isLessThanUnsigned(slaveId, minSlaveID)) {
+    			minSlaveID = slaveId;
+    		}
+    	}
+    	if (FirstReplicaID == Long.MAX_VALUE) {
+    		FirstReplicaID = minSlaveID;
+    	}
+        return slaves.get(FirstReplicaID);
     }
 
     /**
@@ -95,7 +121,21 @@ public class TPCMaster {
      */
     public TPCSlaveInfo findSuccessor(TPCSlaveInfo firstReplica) {
         // implement me
-        return null;
+    	long keyHash = firstReplica.slaveID;
+    	long FirstReplicaID = Long.MAX_VALUE;
+    	long minSlaveID = Long.MAX_VALUE;
+    	for (long slaveId : slaves.keySet()) {
+    		if (isLessThanUnsigned(keyHash, slaveId) && isLessThanUnsigned(slaveId, FirstReplicaID)) {
+    			FirstReplicaID = slaveId;
+    		}
+    		if (isLessThanUnsigned(slaveId, minSlaveID)) {
+    			minSlaveID = slaveId;
+    		}
+    	}
+    	if (FirstReplicaID == Long.MAX_VALUE) {
+    		FirstReplicaID = minSlaveID;
+    	}
+        return slaves.get(FirstReplicaID);
     }
 
     /**
@@ -103,7 +143,7 @@ public class TPCMaster {
      */
     public int getNumRegisteredSlaves() {
         // implement me
-        return -1;
+        return slaves.size();
     }
 
     /**
@@ -112,7 +152,7 @@ public class TPCMaster {
      */
     public TPCSlaveInfo getSlave(long slaveId) {
         // implement me
-        return null;
+        return slaves.get(slaveId);
     }
 
     /**

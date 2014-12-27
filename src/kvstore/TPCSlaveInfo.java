@@ -4,7 +4,7 @@ import static kvstore.KVConstants.*;
 
 import java.io.IOException;
 import java.net.*;
-import java.util.regex.*;
+//import java.util.regex.*;
 
 /**
  * Data structure to maintain information about SlaveServers
@@ -23,6 +23,17 @@ public class TPCSlaveInfo {
      */
     public TPCSlaveInfo(String info) throws KVException {
         // implement me
+    	if (info == null || !info.contains("@") || !info.contains(":"))
+    		throw new KVException(ERROR_INVALID_FORMAT);
+    	int at = info.indexOf('@');
+    	int colon = info.indexOf(':');
+    	if (at < info.length() && colon < info.length()) {
+    		slaveID = Long.parseLong(info.substring(0, at));
+    		hostname = info.substring(at + 1, colon);
+    		port = Integer.parseInt(info.substring(colon + 1));
+    	} else {
+    		throw new KVException(ERROR_INVALID_FORMAT);
+    	}
     }
 
     public long getSlaveID() {
@@ -46,7 +57,19 @@ public class TPCSlaveInfo {
      */
     public Socket connectHost(int timeout) throws KVException {
         // implement me
-        return null;
+    	Socket sock = null;
+    	try {
+    		sock = new Socket();
+    		sock.setSoTimeout(timeout);
+        	sock.connect(new InetSocketAddress(hostname , port));
+    	} catch (SocketTimeoutException ex) {
+        	throw new KVException(ERROR_SOCKET_TIMEOUT);
+        } catch (IOException ex) {
+        	throw new KVException(ERROR_COULD_NOT_CONNECT);
+        } catch (Exception ex) {
+        	throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
+        }
+        return sock;
     }
 
     /**
@@ -57,5 +80,9 @@ public class TPCSlaveInfo {
      */
     public void closeHost(Socket sock) {
         // implement me
+    	try {
+    		sock.close();
+    	} catch (Exception e) {
+    	}
     }
 }
