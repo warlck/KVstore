@@ -187,7 +187,62 @@ public class TPCMaster {
      */
     public String handleGet(KVMessage msg) throws KVException {
         // implement me
-        return null;
+    	Lock lock = masterCache.getLock(msg.getKey());
+    	String key = msg.getKey();
+    	String value = null;
+    	
+    	try {
+    		lock.lock();
+    		
+    		value = masterCache.get(msg.getKey());
+    		
+    		if (value == null) {
+    			TPCSlaveInfo slave = findFirstReplica(key);
+    			value = handleGetBySlave(msg , slave);
+    			
+    			if (value == null) {
+    				slave = findSuccessor(slave);
+    				value = handleGetBySlave(msg , slave);
+    			}    		
+    		}
+    		
+    		if (value != null) {
+    			masterCache.put(key , value);
+    		}
+    	}
+    	finally {
+    		lock.unlock();
+    	}
+    	
+    	if (value == null) {
+    		throw new KVException(KVConstants.ERROR_NO_SUCH_KEY);
+    	}
+    	
+        return value;
+    }
+    
+    public String handleGetBySlave(KVMessage msg , TPCSlaveInfo slave) {
+    	String value = null;
+    	Socket sock = null;
+    	KVMessage rsp = null;
+    	
+    	try {
+    		sock = slave.connectHost(TIMEOUT);
+    		msg.sendMessage(sock);
+    		rsp = new KVMessage(sock);
+    		
+    		if (rsp.getMsgType().equals(KVConstants.RESP) && rsp.getValue() != null &&
+    			rsp.getValue().length() > 0)
+    			value = rsp.getValue();
+    	}
+    	catch (Exception ex) {    		
+    	}
+    	finally {
+    		if (sock != null) {
+    			slave.closeHost(sock);
+    		}
+    	}
+    	return value;
     }
 
 }

@@ -16,9 +16,6 @@ public class TPCMasterHandler implements NetworkHandler {
     public ThreadPool threadpool;
 
     // implement me
-    private class masterHandler implements Runnable {
-    	public void run(){}
-    }
 
     /**
      * Constructs a TPCMasterHandler with one connection in its ThreadPool
@@ -94,7 +91,60 @@ public class TPCMasterHandler implements NetworkHandler {
      */
     @Override
     public void handle(Socket master) {
-        // implement me
+        try {
+        	threadpool.addJob(new MasterHandler(master));
+        }
+        catch (InterruptedException ex) {        	
+        }
+    }
+
+    /**
+     * Runnable class containing routine to service a message from the master.
+     */
+    private class MasterHandler implements Runnable {
+
+        private Socket master;
+
+        public MasterHandler(Socket master) {
+            this.master = master;
+        }
+
+        @Override
+        public void run() {
+            KVMessage req = null;
+            KVMessage rsp = null;
+            
+            try {
+            	req = new KVMessage(master);
+            	
+            	if (req.getMsgType().equals(GET_REQ)) {
+            		if (req.getKey() == null || req.getKey().length() == 0)
+            			rsp = new KVMessage(RESP , ERROR_INVALID_KEY);
+            		else if (req.getKey().length() > 256)
+            			rsp = new KVMessage(RESP , ERROR_OVERSIZED_KEY);
+            		else if (!kvServer.hasKey(req.getKey()))
+            			rsp = new KVMessage(RESP , ERROR_NO_SUCH_KEY);
+            		else {
+            			String value = kvServer.get(req.getKey());
+            			rsp = new KVMessage(RESP);
+            			rsp.setKey(req.getKey());
+            			rsp.setValue(value);
+            		}
+            	}
+            }
+            catch (Exception e) {
+            	return;
+            }
+            
+            if (rsp != null) {
+            	try {
+            		rsp.sendMessage(master);
+            	}
+            	catch (Exception ex) {            		
+            	}
+            }
+        }
+
     }
     
 
