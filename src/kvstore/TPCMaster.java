@@ -97,8 +97,8 @@ public class TPCMaster {
     public TPCSlaveInfo findFirstReplica(String key) {
         // implement me
     	long keyHash = hashTo64bit(key);
-    	long FirstReplicaID = Long.MAX_VALUE;
-    	long minSlaveID = Long.MAX_VALUE;
+    	long FirstReplicaID = -1;
+    	long minSlaveID = -1;
     	for (long slaveId : slaves.keySet()) {
     		if (isLessThanEqualUnsigned(keyHash, slaveId) && isLessThanUnsigned(slaveId, FirstReplicaID)) {
     			FirstReplicaID = slaveId;
@@ -107,7 +107,7 @@ public class TPCMaster {
     			minSlaveID = slaveId;
     		}
     	}
-    	if (FirstReplicaID == Long.MAX_VALUE) {
+    	if (FirstReplicaID == -1 && !slaves.containsKey(-1)) {
     		FirstReplicaID = minSlaveID;
     	}
         return slaves.get(FirstReplicaID);
@@ -122,8 +122,8 @@ public class TPCMaster {
     public TPCSlaveInfo findSuccessor(TPCSlaveInfo firstReplica) {
         // implement me
     	long keyHash = firstReplica.slaveID;
-    	long FirstReplicaID = Long.MAX_VALUE;
-    	long minSlaveID = Long.MAX_VALUE;
+    	long FirstReplicaID = -1;
+    	long minSlaveID = -1;
     	for (long slaveId : slaves.keySet()) {
     		if (isLessThanUnsigned(keyHash, slaveId) && isLessThanUnsigned(slaveId, FirstReplicaID)) {
     			FirstReplicaID = slaveId;
@@ -132,7 +132,7 @@ public class TPCMaster {
     			minSlaveID = slaveId;
     		}
     	}
-    	if (FirstReplicaID == Long.MAX_VALUE) {
+    	if (FirstReplicaID == -1 && keyHash == -1) {
     		FirstReplicaID = minSlaveID;
     	}
         return slaves.get(FirstReplicaID);
