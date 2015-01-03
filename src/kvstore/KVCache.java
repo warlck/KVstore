@@ -96,43 +96,34 @@ public class KVCache implements KeyValueInterface {
     	    	
     	int SetId = Math.abs(key.hashCode()) % numSets;
     	List<KVCacheEntry> curSet = Cache[SetId].getCacheEntry();
-    	KVCacheEntry thisEntry = null;  //to find if the key-value pair is already a cacheEntry in Set
+    	//KVCacheEntry thisEntry = null;  
+        //to find if the key-value pair is already a cacheEntry in Set
     	for (KVCacheEntry e : curSet) {
-    		if (e.getKey().equals(key)) thisEntry = e;
+    		if (e.getKey().equals(key)) {
+                e.setValue(value);
+                e.setIsReferenced("TRUE");
+                return;
+            }
     	}
-    	if (curSet.size() < maxElemsPerSet) {	//Set is not full
-			if (thisEntry != null) {			//Set contains key
-				thisEntry.setValue(value);
-				thisEntry.setIsReferenced("TRUE");
-    		} else {							//Set doesn't contains key
-    			KVCacheEntry newEntry = new KVCacheEntry();
-    			newEntry.setKey(key);
-    			newEntry.setValue(value);
-    			newEntry.setIsReferenced("FALSE");
-    			curSet.add(newEntry);
-    		}
-    	} else { // Set is full;
-    		if (thisEntry != null) {
-    			thisEntry.setValue(value);
-    			thisEntry.setIsReferenced("TRUE");
-    		} else {
-    			KVCacheEntry newEntry = new KVCacheEntry();
-    			newEntry.setKey(key);
-    			newEntry.setValue(value);
-    			newEntry.setIsReferenced("FALSE");
-    			while (true) {
-    				for (KVCacheEntry e : curSet) {
-        				if (e.getIsReferenced().equals("TRUE")) {
-        					e.setIsReferenced("FALSE");
-        				} else {
-        					curSet.remove(e);
-        					curSet.add(newEntry);
-        					return;
-        				}
-        			}
-
+        // not found 
+        KVCacheEntry newEntry = new KVCacheEntry();
+        newEntry.setKey(key);
+        newEntry.setValue(value);
+        newEntry.setIsReferenced("FALSE");
+    	if (curSet.size() < maxElemsPerSet) {	
+			curSet.add(newEntry);
+    	} else { 
+			while (true) {
+				for (KVCacheEntry e : curSet) {
+    				if (e.getIsReferenced().equals("TRUE")) {
+    					e.setIsReferenced("FALSE");
+    				} else {
+    					curSet.remove(e);
+    					curSet.add(newEntry);
+    					return;
+    				}
     			}
-    		}
+			}
     	}
     	
     }
@@ -147,8 +138,6 @@ public class KVCache implements KeyValueInterface {
     @Override
     public void del(String key) {
         // implement me
-    	
-    	
     	int SetId = Math.abs(key.hashCode()) % numSets;
     	List<KVCacheEntry> curSet = Cache[SetId].getCacheEntry();
     	KVCacheEntry thisEntry = null;  //to find if the key-value pair is already a cacheEntry in Set
@@ -223,6 +212,7 @@ public class KVCache implements KeyValueInterface {
         }
         return os.toString();
     }
+    
     @Override
     public String toString() {
         return this.toXML();

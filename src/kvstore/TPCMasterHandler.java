@@ -116,26 +116,25 @@ public class TPCMasterHandler implements NetworkHandler {
             
             try {
             	req = new KVMessage(master);
+                String key = req.getKey();
             	
             	if (req.getMsgType().equals(GET_REQ)) {
-            		if (req.getKey() == null || req.getKey().length() == 0)
+            		if (key == null || key.length() == 0)
             			rsp = new KVMessage(RESP , ERROR_INVALID_KEY);
-            		else if (req.getKey().length() > 256)
+            		else if (key.length() > 256)
             			rsp = new KVMessage(RESP , ERROR_OVERSIZED_KEY);
-            		else if (!kvServer.hasKey(req.getKey()))
+            		else if (!kvServer.hasKey(key))
             			rsp = new KVMessage(RESP , ERROR_NO_SUCH_KEY);
             		else {
-            			String value = kvServer.get(req.getKey());
             			rsp = new KVMessage(RESP);
-            			rsp.setKey(req.getKey());
-            			rsp.setValue(value);
+            			rsp.setKey(key);
+            			rsp.setValue(kvServer.get(key));
             		}
             	}
             }
             catch (Exception e) {
             	return;
             }
-            
             if (rsp != null) {
             	try {
             		rsp.sendMessage(master);

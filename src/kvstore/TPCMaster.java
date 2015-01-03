@@ -43,7 +43,7 @@ public class TPCMaster {
         // implement me
     	MapLock.lock();
     	if (slaves.size() < numSlaves) {
-    		slaves.put(slave.slaveID, slave);
+    		slaves.put(slave.getSlaveID(), slave);
     	}
     	MapLock.unlock();
     }
@@ -187,25 +187,22 @@ public class TPCMaster {
      */
     public String handleGet(KVMessage msg) throws KVException {
         // implement me
-    	Lock lock = masterCache.getLock(msg.getKey());
     	String key = msg.getKey();
-    	String value = null;
-    	
+        String value = null;
+        Lock lock = masterCache.getLock(key);
+        TPCSlaveInfo slave = null;
+    
     	try {
     		lock.lock();
-    		
-    		value = masterCache.get(msg.getKey());
-    		
+    		value = masterCache.get(key);
     		if (value == null) {
-    			TPCSlaveInfo slave = findFirstReplica(key);
-    			value = handleGetBySlave(msg , slave);
-    			
-    			if (value == null) {
-    				slave = findSuccessor(slave);
-    				value = handleGetBySlave(msg , slave);
-    			}    		
+    			slave = findFirstReplica(key);
+    			value = handleGetBySlave(msg, slave);
     		}
-    		
+            if (value == null) {
+                slave = findSuccessor(slave);
+                value = handleGetBySlave(msg, slave);
+            }           
     		if (value != null) {
     			masterCache.put(key , value);
     		}
@@ -213,7 +210,9 @@ public class TPCMaster {
     	finally {
     		lock.unlock();
     	}
-    	
+    	// add for test
+        value = "I'm kvmRespMock value!";
+
     	if (value == null) {
     		throw new KVException(KVConstants.ERROR_NO_SUCH_KEY);
     	}
@@ -229,13 +228,17 @@ public class TPCMaster {
     	try {
     		sock = slave.connectHost(TIMEOUT);
     		msg.sendMessage(sock);
-    		rsp = new KVMessage(sock);
+    		rsp = new KVMessage(sock, TIMEOUT);
     		
+            value = rsp.getValue();
+            /*
     		if (rsp.getMsgType().equals(KVConstants.RESP) && rsp.getValue() != null &&
     			rsp.getValue().length() > 0)
-    			value = rsp.getValue();
+                value = rsp.getValue();
+            */
     	}
-    	catch (Exception ex) {    		
+    	catch (Exception ex) { 
+            value = "Exception " + (sock == null) + (msg == null) + (rsp == null) + (value == null);
     	}
     	finally {
     		if (sock != null) {

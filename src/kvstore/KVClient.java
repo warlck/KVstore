@@ -113,7 +113,7 @@ public class KVClient implements KeyValueInterface {
     	try {
     		sock = connectHost();
     		getReq.sendMessage(sock);
-    		getRsp =new KVMessage(sock);
+    		getRsp = new KVMessage(sock);
     		if (getRsp.getKey() == null || getRsp.getValue() == null)
         		throw new KVException(getRsp.getMessage());
     	} catch (KVException e) {
