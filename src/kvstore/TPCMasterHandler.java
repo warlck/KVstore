@@ -131,10 +131,55 @@ public class TPCMasterHandler implements NetworkHandler {
             			rsp.setValue(kvServer.get(key));
             		}
             	}
+            	
+            	else if (req.getMsgType().equals(DEL_REQ)) {
+            		if (key == null || key.length() == 0)
+            			rsp = new KVMessage(ABORT , ERROR_INVALID_KEY);
+            		else if (key.length() > 256)
+            			rsp = new KVMessage(ABORT , ERROR_OVERSIZED_KEY);
+            		else if (!kvServer.hasKey(key))
+            			rsp = new KVMessage(ABORT , ERROR_NO_SUCH_KEY);
+            		else {
+            			rsp = new KVMessage(READY);
+            		}
+            	}
+            	
+            	else if (req.getMsgType().equals(PUT_REQ)) {
+            		if (key == null || key.length() == 0)
+            			rsp = new KVMessage(ABORT , ERROR_INVALID_KEY);
+            		else if (key.length() > 256)
+            			rsp = new KVMessage(ABORT , ERROR_OVERSIZED_KEY);
+            		else if (!kvServer.hasKey(key))
+            			rsp = new KVMessage(ABORT , ERROR_NO_SUCH_KEY);
+            		else if (req.getValue() == null || req.getValue().length() == 0)
+            			rsp = new KVMessage(ABORT , ERROR_INVALID_VALUE);
+            		else if (req.getValue().length() > 256 * 1000)
+            			rsp = new KVMessage(ABORT , ERROR_OVERSIZED_VALUE);
+            		else {
+            			rsp = new KVMessage(READY);
+            		}
+            	}
+            	
+            	else if (req.getMsgType().equals(COMMIT)) {
+            		rsp = new KVMessage(ACK);
+            		KVMessage lastReq = tpcLog.getLastEntry();
+            		if (lastReq.getMsgType().equals(PUT_REQ)) {
+            			kvServer.put(lastReq.getKey(), lastReq.getValue());
+            		} else if (lastReq.getMsgType().equals(DEL_REQ)) {
+            			kvServer.del(lastReq.getKey());
+            		}
+            	}
+            	
+            	else if (req.getMsgType().equals(ABORT)) {
+            		rsp = new KVMessage(ACK);
+            	}
             }
             catch (Exception e) {
             	return;
-            }
+            } 
+            
+            tpcLog.appendAndFlush(req);
+            
             if (rsp != null) {
             	try {
             		rsp.sendMessage(master);

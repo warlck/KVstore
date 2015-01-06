@@ -109,6 +109,17 @@ public class TPCLog {
         loadFromDisk();
 
         // implement me
+        KVMessage Req = null;
+        for (KVMessage log : entries) {
+        	if (log.getMsgType().getClass().equals(KVConstants.COMMIT)) {
+        		if (Req != null && Req.getMsgType().equals(KVConstants.PUT_REQ)) {
+        			kvServer.put(Req.getKey(), Req.getValue());
+        		} else if (Req != null && Req.getMsgType().equals(KVConstants.DEL_REQ)){
+        			kvServer.del(Req.getKey());
+        		}
+        	}
+        	Req = log;
+        }
     }
 
 }
