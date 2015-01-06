@@ -4,6 +4,7 @@ import static kvstore.KVConstants.*;
 
 import java.net.Socket;
 import java.util.*;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -16,6 +17,7 @@ public class TPCMaster {
     
     private HashMap<Long, TPCSlaveInfo> slaves;
     private Lock MapLock;
+    private Condition slaveRegistered;
 
     /**
      * Creates TPCMaster, expecting numSlaves slave servers to eventually register
@@ -30,6 +32,7 @@ public class TPCMaster {
         
         slaves = new HashMap<Long, TPCSlaveInfo>();
         MapLock = new ReentrantLock();
+        slaveRegistered = MapLock.newCondition();
     }
 
     /**
@@ -44,6 +47,9 @@ public class TPCMaster {
     	MapLock.lock();
     	if (slaves.size() < numSlaves) {
     		slaves.put(slave.getSlaveID(), slave);
+    	}
+    	if (slaves.size() == numSlaves) {
+    		slaveRegistered.signalAll();
     	}
     	MapLock.unlock();
     }
@@ -169,6 +175,88 @@ public class TPCMaster {
     public synchronized void handleTPCRequest(KVMessage msg, boolean isPutReq)
             throws KVException {
         // implement me
+    	if (slaves.size() < numSlaves) {
+    		try {
+    			MapLock.lock();
+				slaveRegistered.await();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			} finally {
+				MapLock.unlock();
+			}
+    	}
+    	Lock cacheLock = masterCache.getLock(msg.getKey());
+    	String errMessage ="";
+    	
+    	try {
+    		cacheLock.lock();
+    		TPCSlaveInfo[] repSlave = new TPCSlaveInfo[2];
+    		repSlave[0] = findFirstReplica(msg.getKey());
+    		repSlave[1] = findSuccessor(repSlave[0]);
+    		boolean commit = true;
+    		Socket sock = null;
+    		KVMessage rsp = null;
+    		//send request
+    		for (int i = 0; i < 2; i++) {
+    			try {
+    				sock = repSlave[i].connectHost(TIMEOUT);
+    				msg.sendMessage(sock);
+    				rsp = new KVMessage(sock);
+    				if (rsp.getMsgType().equals(ABORT)) {
+    					commit = false;
+    					errMessage = rsp.getMessage();
+    				}
+    			} catch (KVException e) {
+    				commit = false;
+    				errMessage = e.getKVMessage().getMessage();
+    			} finally {
+    				if (sock != null) {
+    					repSlave[i].closeHost(sock);
+    				}
+    			}
+    		}
+    		//send decision
+			KVMessage decision = null;
+			if (commit) {
+				decision = new KVMessage(COMMIT);
+				if (isPutReq) {
+					masterCache.put(msg.getKey(), msg.getValue());
+				} else {
+					masterCache.del(msg.getKey());
+				}
+			} else {
+				decision = new KVMessage(ABORT);
+			}
+			
+			for (int i = 0; i < 2; i++) {
+    			while (true) {
+    				try {
+    					sock = repSlave[i].connectHost(TIMEOUT);
+    					decision.sendMessage(sock);
+    					rsp = new KVMessage(sock);
+    				} catch(Exception e) {
+    					continue;
+    				} finally {
+    					if (sock != null) {
+    						repSlave[i].closeHost(sock);
+    					}
+    				}
+    				
+    				if (rsp.getMsgType().equals(ACK)) {
+    					break;
+    				} else {
+    					throw new KVException(ERROR_INVALID_FORMAT);
+    				}
+    			}
+    		}
+			
+			if (!commit) {
+				throw new KVException(errMessage);
+			}
+    	} catch (Exception e) {
+    	} finally {
+    		cacheLock.unlock();
+    	}
     }
 
     /**
@@ -187,6 +275,16 @@ public class TPCMaster {
      */
     public String handleGet(KVMessage msg) throws KVException {
         // implement me
+    	if (slaves.size() < numSlaves) {
+    		try {
+    			MapLock.lock();
+				slaveRegistered.await();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			} finally {
+				MapLock.unlock();
+			}
+    	}
     	String key = msg.getKey();
         String value = null;
         Lock lock = masterCache.getLock(key);
